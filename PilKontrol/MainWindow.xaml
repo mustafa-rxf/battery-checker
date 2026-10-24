@@ -1,0 +1,177 @@
+﻿<Window x:Class="PilKontrol.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PilKontrol" Icon="Assets/icon.ico" Width="480" Height="780" MinHeight="520" MinWidth="420"
+        WindowStartupLocation="Manual" Left="60" Top="20">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="CardBrush" Color="#33FFFFFF"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#A0A8B5"/>
+
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource CardBrush}"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="BorderBrush" Value="#1FFFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style x:Key="Caption" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+        <Style x:Key="BigValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="32"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- Sekme / segment düğmesi -->
+        <Style x:Key="Segment" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" CornerRadius="8" Padding="14,7" Margin="0,0,2,0" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#44FFFFFF"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#26FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="16,12,16,12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Başlık -->
+        <StackPanel Grid.Row="0" Margin="2,0,0,8">
+            <TextBlock Text="PilKontrol" FontSize="22" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                <Ellipse x:Name="BadgeDot" Width="9" Height="9" Fill="Gray" VerticalAlignment="Center" Margin="0,1,7,0"/>
+                <TextBlock x:Name="BadgeText" Text="" Foreground="{StaticResource MutedBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Sekmeler -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+            <RadioButton x:Name="TabMain" Style="{StaticResource Segment}" GroupName="tab" Content="Genel" IsChecked="True" Checked="Tab_Checked"/>
+            <RadioButton x:Name="TabApps" Style="{StaticResource Segment}" GroupName="tab" Content="Pilde kapatılacak uygulamalar" Checked="Tab_Checked"/>
+        </StackPanel>
+
+        <!-- Genel sayfa -->
+        <ScrollViewer x:Name="PageMain" Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Ana kart: dairesel pil göstergesi + anlık güç + kalan süre -->
+                <Border Style="{StaticResource Card}" Padding="18">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#3A2E4A3C" Offset="0"/>
+                            <GradientStop Color="#33FFFFFF" Offset="0.7"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Grid Width="130" Height="130" Margin="0,0,20,0">
+                            <Ellipse Width="112" Height="112" Stroke="#26FFFFFF" StrokeThickness="11"/>
+                            <Path x:Name="GaugeArc" StrokeThickness="11" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  Stroke="#3DDC84" Width="130" Height="130"/>
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <TextBlock x:Name="PctText" Text="-" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="PctSub" Style="{StaticResource Caption}" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="ANLIK GÜÇ" Style="{StaticResource Caption}"/>
+                            <TextBlock x:Name="WattText" Text="-" FontSize="28" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="WattSub" Style="{StaticResource Caption}" TextWrapping="Wrap"/>
+                            <TextBlock Text="TAHMİNİ KALAN SÜRE" Style="{StaticResource Caption}" Margin="0,14,0,0"/>
+                            <TextBlock x:Name="TimeText" Text="-" FontSize="22" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="TASARRUF ETKİSİ" Style="{StaticResource Caption}"/>
+                        <TextBlock x:Name="SaveText" Text="Veri toplanıyor" Style="{StaticResource BigValue}"/>
+                        <TextBlock x:Name="SaveSub" Style="{StaticResource Caption}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <Grid Height="120">
+                        <TextBlock Text="Güç tüketimi (W)" Style="{StaticResource Caption}" VerticalAlignment="Top"/>
+                        <TextBlock x:Name="ChartMax" Style="{StaticResource Caption}" VerticalAlignment="Top" HorizontalAlignment="Right"/>
+                        <TextBlock x:Name="ChartEmpty" Text="Henüz veri yok" Style="{StaticResource Caption}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Canvas x:Name="Chart" Margin="0,18,0,0" ClipToBounds="True" SizeChanged="Chart_SizeChanged"/>
+                    </Grid>
+                </Border>
+
+                <TextBlock Text="ÇALIŞMA MODU" Style="{StaticResource Caption}" Margin="4,4,0,4"/>
+                <Border Background="#22FFFFFF" CornerRadius="10" Padding="4" HorizontalAlignment="Left" Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="ModeAuto" Style="{StaticResource Segment}" GroupName="mode" Content="Otomatik" Checked="Mode_Checked" Tag="auto"/>
+                        <RadioButton x:Name="ModeAlways" Style="{StaticResource Segment}" GroupName="mode" Content="Her zaman tasarruf" Checked="Mode_Checked" Tag="always"/>
+                        <RadioButton x:Name="ModeOff" Style="{StaticResource Segment}" GroupName="mode" Content="Kapalı" Checked="Mode_Checked" Tag="off"/>
+                    </StackPanel>
+                </Border>
+                <CheckBox x:Name="AutostartBox" Content="Windows açılışında otomatik başlat" Margin="2,0,0,0"
+                          Checked="Autostart_Changed" Unchecked="Autostart_Changed"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Uygulamalar sayfası -->
+        <ScrollViewer x:Name="PageApps" Grid.Row="2" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="2,0,0,10">
+                    <Run FontWeight="SemiBold" Foreground="White">Kıs:</Run> uygulama açık kalır, ama pilde düşük öncelik + verimlilik modu + toplam CPU'nun %3'ü ile sınırlanır. Prizde serbest kalır.<LineBreak/>
+                    <Run FontWeight="SemiBold" Foreground="White">Kapat:</Run> pile geçince kapatılır, prize takınca yeniden açılır. Önce nazikçe, 8 sn sonra zorla.
+                </TextBlock>
+                <TextBlock x:Name="AppsEmpty" Text="Uygulamalar taranıyor..." Style="{StaticResource Caption}" Margin="2,0,0,0"/>
+                <ItemsControl x:Name="AppList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource Card}" Padding="14,6" Margin="0,0,0,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding CpuText}" Style="{StaticResource Caption}"/>
+                                    </StackPanel>
+                                    <CheckBox Grid.Column="1" Content="Kıs" MinWidth="0" Margin="8,0,6,0"
+                                              IsChecked="{Binding Throttle, Mode=TwoWay}"/>
+                                    <CheckBox Grid.Column="2" Content="Kapat" MinWidth="0" Margin="6,0,0,0"
+                                              IsChecked="{Binding Kill, Mode=TwoWay}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
