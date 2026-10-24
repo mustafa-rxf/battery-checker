@@ -22,7 +22,7 @@ Sadece **pildeyken** devreye girer, prizdeki performansa dokunmaz. **Parlaklığ
 |---|---|
 | Güç planı | Turbo boost kapalı, işlemci verimlilik eğilimli, PCIe/Wi-Fi/USB güç tasarrufu, disk/ekran/uyku süreleri kısalır |
 | Ekran yenileme hızı | 60 Hz'in üstündeyse 60 Hz'e iner, prizde geri döner |
-| **Kıs** (uygulama bazında) | Uygulama açık kalır; düşük öncelik + EcoQoS (Görev Yöneticisi "Verimlilik modu") + toplam CPU'nun %3'üne sert sınır (Job nesnesi). Prizde serbest kalır |
+| **Kıs** (uygulama bazında) | Uygulama arka plandayken açık kalır ama düşük öncelik + EcoQoS (Görev Yöneticisi "Verimlilik modu") + toplam CPU'nun %3'üne sert sınır (Job nesnesi) uygulanır. **Uygulamayı öne getirdiğin an kısıt kalkar**, arka plana atınca geri gelir. Prizde ve "Kıs" kutusunu kapatınca anında eski haline döner |
 | **Kapat** (uygulama bazında) | Pile geçince kapatılır, prize takınca yeniden açılır |
 | Pil ≤ %20 | "Ultra" plan: işlemci %60 ile sınırlı |
 

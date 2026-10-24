@@ -33,7 +33,44 @@ public sealed class Engine
     {
         thread = new Thread(Loop) { IsBackground = true, Name = "PilKontrol" };
         thread.Start();
+        new Thread(ForegroundLoop) { IsBackground = true, Name = "PilKontrol-Foreground" }.Start();
     }
+
+    /// <summary>
+    /// Kısılan bir uygulama öne gelince kısıtını kaldırır (yoksa kullanırken donar),
+    /// arka plana geçince tekrar kısar.
+    /// </summary>
+    void ForegroundLoop()
+    {
+        string? released = null;
+        while (!cts.IsCancellationRequested)
+        {
+            try
+            {
+                var fg = Optimizer.ForegroundProcessName();
+                Optimizer.Foreground = fg;
+                if (!Saving) released = null;
+                else
+                {
+                    if (released != null && !string.Equals(fg, released, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (s.Throttle.Contains(released, StringComparer.OrdinalIgnoreCase)) Optimizer.ThrottleOne(released, true);
+                        released = null;
+                    }
+                    if (released == null && fg != null && IsThrottled(fg))
+                    {
+                        Optimizer.ThrottleOne(fg, false);
+                        released = fg;
+                    }
+                }
+            }
+            catch { }
+            cts.Token.WaitHandle.WaitOne(700);
+        }
+    }
+
+    bool IsThrottled(string name) =>
+        s.Throttle.Contains(name, StringComparer.OrdinalIgnoreCase) && !s.Kill.Contains(name, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Durdurur ve eski güç planı, ekran hızı ve uygulamaları geri getirir.</summary>
     public void Shutdown()
@@ -74,7 +111,9 @@ public sealed class Engine
             else if (!on) s.Throttle.Remove(name);
             s.Save();
         }
-        if (Saving) Task.Run(() => { lock (gate) Optimizer.ThrottleOne(name, on); });
+        // Kutu kapatılınca (on=false) uygulama hemen eski hızına döner. Öndeki uygulamayı kısmayız.
+        var isForeground = string.Equals(name, Optimizer.Foreground, StringComparison.OrdinalIgnoreCase);
+        if (Saving && !(on && isForeground)) Task.Run(() => Optimizer.ThrottleOne(name, on));
     }
 
     public PlanStat? Stat(string key) => s.Stats.GetValueOrDefault(key);

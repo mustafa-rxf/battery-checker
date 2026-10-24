@@ -1,9 +1,9 @@
-; PilKontrol kurulum sihirbazı (Inno Setup 6)
+﻿; PilKontrol kurulum sihirbazı (Inno Setup 6)
 ; Derleme: iscc installer\PilKontrol.iss   (önce publish\PilKontrol.exe üretilmiş olmalı)
 
 #define AppName "PilKontrol"
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 #define AppExe "PilKontrol.exe"
 

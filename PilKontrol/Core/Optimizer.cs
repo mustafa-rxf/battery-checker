@@ -47,7 +47,10 @@ public static class Optimizer
     const int LowRefreshHz = 60;
     /// <summary>Kısılan uygulamaların toplam CPU tavanı (1/100 yüzde; 300 = toplam CPU'nun %3'ü).</summary>
     const uint ThrottleCpuRate = 300;
-    static readonly Dictionary<string, IntPtr> Jobs = new(StringComparer.OrdinalIgnoreCase);
+    static readonly object ThrottleLock = new();
+    static readonly Dictionary<int, ProcessPriorityClass> OriginalPriority = new();
+    /// <summary>Şu an öndeki uygulama: kısılmaz, yoksa kullanırken donar.</summary>
+    public static volatile string? Foreground;
     public const int UltraBelowPercent = 20;
 
     static Settings S => Settings.Current;
@@ -122,38 +125,71 @@ public static class Optimizer
     public static void Throttle(bool on)
     {
         var names = on ? S.Throttle.Except(S.Kill, StringComparer.OrdinalIgnoreCase)
-                       : S.Throttle.Concat(Jobs.Keys).Distinct(StringComparer.OrdinalIgnoreCase);
+                              .Where(n => !string.Equals(n, Foreground, StringComparison.OrdinalIgnoreCase))
+                       : S.Throttle.AsEnumerable();
         foreach (var name in names.ToList()) ThrottleOne(name, on);
     }
 
     /// <summary>Düşük öncelik + EcoQoS (Görev Yöneticisi "Verimlilik modu") + sert CPU tavanı.</summary>
     public static void ThrottleOne(string name, bool on)
     {
-        IntPtr job = IntPtr.Zero;
-        if (on)
+        lock (ThrottleLock)
         {
-            if (!Jobs.TryGetValue(name, out job))
-                Jobs[name] = job = Native.CreateJobObjectW(IntPtr.Zero, null);
-        }
-        else Jobs.TryGetValue(name, out job);
-        if (job != IntPtr.Zero)
-        {
-            var cap = new Native.JobCpuRateControl { ControlFlags = on ? 1u | 4u : 0u, CpuRate = on ? ThrottleCpuRate : 0 };
-            Native.SetInformationJobObject(job, 15, ref cap, Marshal.SizeOf(cap));
-        }
-
-        foreach (var p in Process.GetProcessesByName(name))
-            using (p)
+            // Adlı job: uygulama yeniden açılsa bile aynı job'a ulaşıp sınırı kaldırabiliriz.
+            var job = Native.CreateJobObjectW(IntPtr.Zero, @"Local\PilKontrol_" + name);
+            if (job != IntPtr.Zero)
             {
-                try
-                {
-                    var st = new Native.ProcessPowerThrottlingState { Version = 1, ControlMask = 1, StateMask = on ? 1u : 0u };
-                    Native.SetProcessInformation(p.Handle, 4, ref st, Marshal.SizeOf(st));
-                    p.PriorityClass = on ? ProcessPriorityClass.Idle : ProcessPriorityClass.Normal;
-                    if (on && job != IntPtr.Zero) Native.AssignProcessToJobObject(job, p.Handle); // zaten üyeyse sessizce başarısız olur
-                }
-                catch { /* erişim yok: atla */ }
+                // Sınırı kapatmak için "kapat" bayrağı yok: tavanı %100'e çıkarırız.
+                var cap = new Native.JobCpuRateControl { ControlFlags = 1u | 4u, CpuRate = on ? ThrottleCpuRate : 10000 };
+                Native.SetInformationJobObject(job, 15, ref cap, Marshal.SizeOf(cap));
             }
+
+            foreach (var p in Process.GetProcessesByName(name))
+                using (p)
+                {
+                    try
+                    {
+                        if (on)
+                        {
+                            OriginalPriority.TryAdd(p.Id, p.PriorityClass);
+                            SetEco(p, true);
+                            p.PriorityClass = ProcessPriorityClass.Idle;
+                            if (job != IntPtr.Zero) Native.AssignProcessToJobObject(job, p.Handle); // zaten üyeyse sessizce başarısız olur
+                        }
+                        else
+                        {
+                            SetEco(p, false);
+                            if (OriginalPriority.Remove(p.Id, out var orig)) p.PriorityClass = orig;
+                            else if (p.PriorityClass == ProcessPriorityClass.Idle) p.PriorityClass = ProcessPriorityClass.Normal;
+                        }
+                    }
+                    catch { /* erişim yok: atla */ }
+                }
+            if (job != IntPtr.Zero) Native.CloseHandle(job); // sınır, içindeki süreçler yaşadıkça geçerli kalır
+        }
+    }
+
+    static void SetEco(Process p, bool on)
+    {
+        var st = new Native.ProcessPowerThrottlingState { Version = 1, ControlMask = on ? 1u : 0u, StateMask = on ? 1u : 0u };
+        var size = Marshal.SizeOf(st);
+        if (Native.SetProcessInformation(p.Handle, 4, ref st, size) || on) return;
+        // Sistem yönetimine bırakma kabul edilmediyse açıkça "kısma yok" de.
+        st.ControlMask = 1; st.StateMask = 0;
+        Native.SetProcessInformation(p.Handle, 4, ref st, size);
+    }
+
+    /// <summary>Şu an en öndeki pencerenin süreç adı (yoksa null).</summary>
+    public static string? ForegroundProcessName()
+    {
+        try
+        {
+            Native.GetWindowThreadProcessId(Native.GetForegroundWindow(), out var pid);
+            if (pid == 0) return null;
+            using var p = Process.GetProcessById((int)pid);
+            return p.ProcessName;
+        }
+        catch { return null; }
     }
 
     /// <summary>Önce nazikçe kapatır, 8 sn sonra açık kalanı zorla sonlandırır.</summary>

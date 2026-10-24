@@ -46,6 +46,15 @@ static class Native
     public static extern IntPtr CreateJobObjectW(IntPtr attributes, string? name);
 
     [DllImport("kernel32.dll")]
+    public static extern bool CloseHandle(IntPtr handle);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+
+    [DllImport("kernel32.dll")]
     public static extern bool SetInformationJobObject(IntPtr job, int infoClass, ref JobCpuRateControl info, int size);
 
     [DllImport("kernel32.dll")]
